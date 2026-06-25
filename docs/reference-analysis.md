@@ -29,4 +29,4 @@
 
 ## 本專案採用的實作方式
 
-在 repo root 建立全新的 WXT + TypeScript MV3 extension。Options page 讓使用者選擇本機字幕資料夾，並把 `FileSystemDirectoryHandle` 存到 IndexedDB。Content script 偵測 YouTube watch 頁面的 video id，確認 YouTube 原生字幕目前是關閉狀態後，向 background script 請求 `{videoId}.zh-tw.vtt`，在本機解析 WebVTT，將自訂 overlay 掛到播放器內，並用 `requestAnimationFrame` 迴圈根據 `video.currentTime` 同步字幕顯示。缺檔、權限不足或解析失敗只更新 extension 狀態，不在 YouTube 頁面上打擾使用者。
+在 repo root 建立全新的 WXT + TypeScript MV3 extension。Options page 讓使用者選擇本機字幕資料夾，並把 `FileSystemDirectoryHandle` 存到 IndexedDB。Content script 偵測 YouTube watch 頁面的 video id，確認 YouTube 原生字幕目前是關閉狀態後，向 background script 請求 `{videoId}.zh-TW.vtt`，在本機解析 WebVTT，將自訂 overlay 掛到播放器內，並用 `requestAnimationFrame` 迴圈根據 `video.currentTime` 同步字幕顯示。缺檔、權限不足或解析失敗只更新 extension 狀態，不在 YouTube 頁面上打擾使用者。

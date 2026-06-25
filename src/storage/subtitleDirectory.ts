@@ -51,7 +51,7 @@ export async function loadSubtitleText(videoId: string): Promise<
   const hasPermission = await ensureReadPermission(handle);
   if (!hasPermission) return { ok: false, reason: "NO_PERMISSION" };
 
-  const filename = `${videoId}.zh-tw.vtt`;
+  const filename = `${videoId}.zh-TW.vtt`;
   try {
     const fileHandle = await handle.getFileHandle(filename);
     const file = await fileHandle.getFile();

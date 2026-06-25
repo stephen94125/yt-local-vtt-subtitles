@@ -7,6 +7,7 @@ import {
 } from "../../src/storage/subtitleDirectory";
 
 const statusElement = getElement("folder-status");
+const helpElement = getElement("folder-help");
 const chooseButton = getButton("choose-folder");
 const reauthorizeButton = getButton("reauthorize-folder");
 const clearButton = getButton("clear-folder");
@@ -30,6 +31,7 @@ document.addEventListener("DOMContentLoaded", () => {
 async function chooseFolder(): Promise<void> {
   if (!("showDirectoryPicker" in window)) {
     statusElement.textContent = "File System Access API unavailable";
+    helpElement.textContent = getFileSystemAccessHelp();
     return;
   }
 
@@ -61,6 +63,7 @@ async function clearFolder(): Promise<void> {
 async function renderStatus(): Promise<void> {
   const status = await getSubtitleDirectoryStatus();
   statusElement.textContent = formatDirectoryStatus(status);
+  helpElement.textContent = getStatusHelp(status);
 }
 
 function formatDirectoryStatus(status: Awaited<ReturnType<typeof getSubtitleDirectoryStatus>>): string {
@@ -74,6 +77,22 @@ function formatDirectoryStatus(status: Awaited<ReturnType<typeof getSubtitleDire
     default:
       return "configured";
   }
+}
+
+function getStatusHelp(status: Awaited<ReturnType<typeof getSubtitleDirectoryStatus>>): string {
+  if (!("showDirectoryPicker" in window)) {
+    return getFileSystemAccessHelp();
+  }
+
+  if (status === "permission_needed") {
+    return "Permission is separate from folder setup. Click Re-authorize, then return to YouTube and click Reload subtitle.";
+  }
+
+  return "";
+}
+
+function getFileSystemAccessHelp(): string {
+  return "Chrome/Brave may hide this API depending on version defaults. Open chrome://flags or brave://flags, search File System Access API, change Default (Disabled) to Enabled, restart the browser, then reload this extension.";
 }
 
 function getElement(id: string): HTMLElement {

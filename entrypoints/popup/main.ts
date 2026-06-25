@@ -90,7 +90,22 @@ function isContentStatus(value: unknown): value is ContentStatus {
 }
 
 function formatSubtitleStatus(status: ContentStatus["subtitleStatus"]): string {
-  return status.replace(/_/g, " ");
+  switch (status) {
+    case "not_checked":
+      return "not checked";
+    case "found":
+      return "found";
+    case "not_found":
+      return "not found";
+    case "no_folder":
+      return "no folder configured";
+    case "no_permission":
+      return "permission needed: open options and re-authorize";
+    case "parse_error":
+      return "parse error";
+    case "youtube_captions_on":
+      return "YouTube captions on";
+  }
 }
 
 function getElement(id: string): HTMLElement {

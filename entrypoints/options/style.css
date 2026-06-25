@@ -32,6 +32,12 @@ p {
   color: #52606d;
 }
 
+.help {
+  max-width: 620px;
+  color: #52606d;
+  line-height: 1.45;
+}
+
 code {
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
 }
@@ -64,6 +70,10 @@ button:hover {
   }
 
   .pattern {
+    color: #cbd2d9;
+  }
+
+  .help {
     color: #cbd2d9;
   }
 
