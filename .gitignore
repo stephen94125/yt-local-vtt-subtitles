@@ -6,3 +6,5 @@ dist/
 
 vtt/*
 !vtt/.gitkeep
+
+.tmp
