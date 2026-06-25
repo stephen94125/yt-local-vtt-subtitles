@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Local VTT Subtitles</title>
+    <link rel="stylesheet" href="./style.css" />
+  </head>
+  <body>
+    <main>
+      <h1>Local VTT Subtitles</h1>
+
+      <dl class="status-list">
+        <div>
+          <dt>Enabled</dt>
+          <dd id="enabled">...</dd>
+        </div>
+        <div>
+          <dt>Current videoId</dt>
+          <dd id="video-id">...</dd>
+        </div>
+        <div>
+          <dt>Folder configured</dt>
+          <dd id="folder-configured">...</dd>
+        </div>
+        <div>
+          <dt>Last subtitle status</dt>
+          <dd id="subtitle-status">...</dd>
+        </div>
+      </dl>
+
+      <div class="actions">
+        <button id="toggle-enabled" type="button">Disable</button>
+        <button id="reload-subtitle" type="button">Reload subtitle</button>
+        <button id="open-options" type="button">Open options</button>
+      </div>
+    </main>
+
+    <script type="module" src="./main.ts"></script>
+  </body>
+</html>

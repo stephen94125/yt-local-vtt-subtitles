@@ -1,0 +1,9 @@
+{
+  "extends": "./.wxt/tsconfig.json",
+  "compilerOptions": {
+    "strict": true,
+    "noUncheckedIndexedAccess": true
+  },
+  "include": ["wxt.config.ts", "entrypoints/**/*", "src/**/*", ".wxt/wxt.d.ts"],
+  "exclude": ["youtube-multi", "youtube-subtitle-translator", "node_modules", ".output"]
+}

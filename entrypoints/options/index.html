@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Local VTT Subtitles Options</title>
+    <link rel="stylesheet" href="./style.css" />
+  </head>
+  <body>
+    <main>
+      <h1>Local subtitle folder</h1>
+
+      <section>
+        <p>Status: <strong id="folder-status">...</strong></p>
+        <p class="pattern">Expected filename pattern: <code>{videoId}.zh-tw.vtt</code></p>
+      </section>
+
+      <div class="actions">
+        <button id="choose-folder" type="button">Choose subtitle folder</button>
+        <button id="reauthorize-folder" type="button">Re-authorize</button>
+        <button id="clear-folder" type="button">Clear folder</button>
+      </div>
+    </main>
+
+    <script type="module" src="./main.ts"></script>
+  </body>
+</html>

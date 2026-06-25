@@ -1,0 +1,79 @@
+:root {
+  color-scheme: light dark;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+body {
+  margin: 0;
+  color: #1f2933;
+  background: #f7f8fa;
+}
+
+main {
+  width: min(640px, calc(100vw - 32px));
+  margin: 32px auto;
+}
+
+h1 {
+  margin: 0 0 16px;
+  font-size: 24px;
+  line-height: 1.25;
+}
+
+section {
+  margin-bottom: 18px;
+}
+
+p {
+  margin: 0 0 8px;
+}
+
+.pattern {
+  color: #52606d;
+}
+
+code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+button {
+  min-height: 36px;
+  padding: 0 12px;
+  border: 1px solid #bcccdc;
+  border-radius: 6px;
+  background: #fff;
+  color: #102a43;
+  font: inherit;
+  cursor: pointer;
+}
+
+button:hover {
+  background: #eef2f7;
+}
+
+@media (prefers-color-scheme: dark) {
+  body {
+    color: #f5f7fa;
+    background: #111827;
+  }
+
+  .pattern {
+    color: #cbd2d9;
+  }
+
+  button {
+    border-color: #3e4c59;
+    background: #1f2933;
+    color: #f5f7fa;
+  }
+
+  button:hover {
+    background: #323f4b;
+  }
+}

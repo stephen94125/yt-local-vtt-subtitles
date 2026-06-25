@@ -1,0 +1,15 @@
+{
+  "name": "yt-local-vtt-subtitles",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "wxt",
+    "build": "wxt build",
+    "typecheck": "wxt prepare && tsc --noEmit"
+  },
+  "devDependencies": {
+    "typescript": "^5.9.2",
+    "wxt": "^0.20.8"
+  }
+}
