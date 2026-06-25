@@ -101,6 +101,117 @@ yt-dlp --no-update \
 {videoId}.zh-TW.vtt
 ```
 
+## 用 agy 翻譯 VTT 字幕
+
+專案提供一支批次翻譯腳本：
+
+```text
+scripts/translate-vtt-with-agy.ts
+```
+
+它會把來源 VTT 拆成 TSV cue，送到 `agy` 翻成繁體中文，再合回新的 VTT。腳本只讓模型處理字幕文字，不讓模型碰時間碼和 VTT 結構。
+
+### 前置條件
+
+需要有：
+
+- Node.js 24 以上，因為這裡用 `node --experimental-strip-types` 直接跑 TypeScript。
+- `agy` CLI，且可以用 `--print` 非互動模式輸出結果。
+- `prompts/vtt-zh-tw-translation.md`，這是翻譯提示詞模板。
+
+先確認 `agy` 可用：
+
+```bash
+agy --model gemini-3.5-flash --print - <<'EOF'
+請只輸出 OK
+EOF
+```
+
+### 推薦用法
+
+不要只靠預設值，建議明確指定 input、output 和 workdir：
+
+```bash
+node --experimental-strip-types scripts/translate-vtt-with-agy.ts \
+  --input vtt/dQw4w9WgXcQ.en.vtt \
+  --output vtt/dQw4w9WgXcQ.zh-TW.vtt \
+  --workdir .tmp/vtt-translation-dQw4w9WgXcQ \
+  --chunk-size 400 \
+  --overlap 120 \
+  --model gemini-3.5-flash \
+  --timeout-ms 900000
+```
+
+輸出成功後，目標 VTT 會寫到 `--output` 指定的位置。
+
+### 續跑
+
+如果中途某一批失敗，已完成的 batch response 會留在 `--workdir` 底下。修正問題後可以加 `--resume`，重用已經通過解析的批次：
+
+```bash
+node --experimental-strip-types scripts/translate-vtt-with-agy.ts \
+  --input vtt/dQw4w9WgXcQ.en.vtt \
+  --output vtt/dQw4w9WgXcQ.zh-TW.vtt \
+  --workdir .tmp/vtt-translation-dQw4w9WgXcQ \
+  --chunk-size 400 \
+  --overlap 120 \
+  --model gemini-3.5-flash \
+  --timeout-ms 900000 \
+  --resume
+```
+
+### Flags
+
+| flag | 預設值 | 說明 |
+|---|---:|---|
+| `--input <path>` | `vtt/dQw4w9WgXcQ.en.vtt` | 來源英文 VTT。 |
+| `--output <path>` | `vtt/dQw4w9WgXcQ.zh-TW.vtt` | 輸出的繁中 VTT。 |
+| `--workdir <path>` | `.tmp/vtt-translation-dQw4w9WgXcQ` | 中間檔目錄，會放 prompt、response、TSV 和驗證結果。建議每支影片用不同目錄。 |
+| `--prompt-template <path>` | `prompts/vtt-zh-tw-translation.md` | 翻譯提示詞模板。 |
+| `--chunk-size <n>` | `400` | 每次送給 `agy` 的目標 cue 數。數字越大，上下文越集中，但單次輸出越長。 |
+| `--overlap <n>` | `120` | 每批前面附帶多少 cue 當前文參考。這些 cue 只給模型理解上下文，不會要求輸出。 |
+| `--model <name>` | `gemini-3.5-flash` | 傳給 `agy --model` 的模型名稱。 |
+| `--timeout-ms <n>` | `600000` | 每次 `agy` 呼叫的 timeout，單位是毫秒。大型 batch 建議用 `900000` 或更高。 |
+| `--agy-bin <path>` | `agy` | `agy` 執行檔路徑。若 shell 找不到 agy，可直接指定完整路徑。 |
+| `--resume` | 關閉 | 續跑模式。若 response 檔已存在且能解析，就重用該批結果。 |
+
+### 工作目錄內容
+
+`--workdir` 裡會產生：
+
+```text
+.tmp/vtt-translation-dQw4w9WgXcQ/
+  prompts/          每一批送給 agy 的完整 prompt
+  responses/        agy 回傳的 raw TSV
+  source.tsv        從來源 VTT 抽出的原文 cue
+  translations.tsv  已合併的翻譯 TSV
+  validation.txt    最終驗證結果
+```
+
+如果某一批翻譯品質不好，可以先看對應的 `prompts/batch-...md` 和 `responses/batch-...tsv`。
+
+### 腳本做的驗證
+
+腳本會在寫出目標 VTT 前檢查：
+
+- 每一批輸出都有完整目標 ID。
+- 不接受目標範圍外的 ID。
+- 重複 ID 會警告，並保留最後一版。
+- `0001: English -> 中文` 這類非標準 TSV 會嘗試修復並警告。
+- 來源與輸出的時間碼行數一致。
+- 來源與輸出的每一行時間碼完全一致。
+- 輸出 VTT 以 `WEBVTT` 開頭。
+- VTT block 數等於 cue 數加 1 個 header block。
+- 英文殘留行數過多時會失敗。
+
+### 注意事項
+
+- `vtt/*` 目前被 `.gitignore` 忽略，所以產出的 `.vtt` 會留在本機，不會自動進 git。
+- 若要給 YouTube extension 使用，輸出檔名建議用 `{videoId}.zh-TW.vtt`。
+- `--overlap` 可以開大一點，因為這個任務更重視上下文連貫；目前建議至少 `120`。
+- `--chunk-size` 如果太大，模型比較可能漏行或輸出格式飄掉；如果常失敗，就降到 `200` 或 `300`。
+- 機械驗證只能保證格式沒壞；語氣、笑點和台灣字幕感仍要依照 `docs/vtt-subtitle-translation-qa.md` 抽樣審稿。
+
 ## 測試流程
 
 1. 打開 YouTube watch 頁。

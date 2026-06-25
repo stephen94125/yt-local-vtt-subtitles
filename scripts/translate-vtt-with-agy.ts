@@ -37,10 +37,10 @@ type Options = {
 const defaults: Options = {
   input: "vtt/dQw4w9WgXcQ.en.vtt",
   output: "vtt/dQw4w9WgXcQ.zh-TW.vtt",
-  workdir: "tmp/vtt-translation-dQw4w9WgXcQ",
+  workdir: ".tmp/vtt-translation-dQw4w9WgXcQ",
   promptTemplate: "prompts/vtt-zh-tw-translation.md",
   chunkSize: 400,
-  overlap: 40,
+  overlap: 120,
   model: "gemini-3.5-flash",
   timeoutMs: 10 * 60 * 1000,
   resume: false,
@@ -181,13 +181,13 @@ function toTsv(cues: Cue[]): string {
 }
 
 function buildPrompt(template: string, batch: Batch): string {
-  const contextText = batch.context.length > 0 ? toTsv(batch.context) : "(none)";
+  const contextText = batch.context.length > 0 ? toTsv(batch.context) : "（無）";
   return `${template.trim()}
 
-CONTEXT cues, do not output:
+前文參考，請只用來理解上下文，不要輸出：
 ${contextText}
 
-TARGET cues, translate and output:
+目標字幕，請翻譯並只輸出這些 ID：
 ${toTsv(batch.target)}
 `;
 }
@@ -234,6 +234,7 @@ function parseTranslations(raw: string, expected: Cue[]): Map<number, string> {
   const expectedIds = new Set(expected.map((cue) => id(cue)));
   const seen = new Set<string>();
   const duplicateIds = new Set<string>();
+  const repairedIds = new Set<string>();
   const translations = new Map<number, string>();
   const lines = raw
     .replace(/\r\n/g, "\n")
@@ -243,11 +244,16 @@ function parseTranslations(raw: string, expected: Cue[]): Map<number, string> {
     .filter((line) => line.trim() !== "" && !line.trim().startsWith("```"));
 
   for (const line of lines) {
-    const match = line.match(/^(\d{4})\t(.+)$/) ?? line.match(/^(\d{4}):\s.*?\s->\s(.+)$/);
+    const tsvMatch = line.match(/^(\d{4})\t(.+)$/);
+    const repairedMatch = line.match(/^(\d{4}):\s.*?\s->\s(.+)$/);
+    const match = tsvMatch ?? repairedMatch;
     if (!match) {
       throw new Error(`Invalid TSV line: ${line}`);
     }
     const [, lineId, text] = match;
+    if (!tsvMatch && repairedMatch) {
+      repairedIds.add(lineId);
+    }
     if (!expectedIds.has(lineId)) {
       throw new Error(`Unexpected cue id in output: ${lineId}`);
     }
@@ -264,6 +270,9 @@ function parseTranslations(raw: string, expected: Cue[]): Map<number, string> {
   }
   if (duplicateIds.size > 0) {
     console.error(`Duplicate cue ids detected; kept last value: ${[...duplicateIds].join(", ")}`);
+  }
+  if (repairedIds.size > 0) {
+    console.error(`Repaired non-TSV cue lines: ${[...repairedIds].join(", ")}`);
   }
 
   return translations;
