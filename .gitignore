@@ -3,3 +3,6 @@ node_modules/
 .output/
 dist/
 *.log
+
+vtt/*
+!vtt/.gitkeep
