@@ -2,6 +2,7 @@
 import { spawn } from "node:child_process";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 
 type Cue = {
   index: number;
@@ -35,11 +36,14 @@ type Options = {
   maxEnglishLineRatio: number;
 };
 
+const scriptDir = path.dirname(fileURLToPath(import.meta.url));
+const defaultPromptTemplate = "../references/vtt-zh-tw-translation.md";
+
 const defaults: Options = {
   input: "vtt/dQw4w9WgXcQ.en.vtt",
   output: "vtt/dQw4w9WgXcQ.zh-TW.vtt",
   workdir: ".tmp/vtt-translation-dQw4w9WgXcQ",
-  promptTemplate: "prompts/vtt-zh-tw-translation.md",
+  promptTemplate: defaultPromptTemplate,
   chunkSize: 400,
   overlap: 120,
   model: "gemini-3.5-flash",
@@ -202,6 +206,14 @@ ${toTsv(batch.target)}
 `;
 }
 
+function resolvePromptTemplate(promptTemplate: string): string {
+  if (path.isAbsolute(promptTemplate)) return promptTemplate;
+  if (promptTemplate === defaultPromptTemplate) {
+    return path.resolve(scriptDir, promptTemplate);
+  }
+  return promptTemplate;
+}
+
 async function runAgy(prompt: string, opts: Options): Promise<string> {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), opts.timeoutMs);
@@ -341,7 +353,13 @@ function validateOutput(sourceRaw: string, outputRaw: string, cueCount: number, 
 
   const englishLineCount = outputRaw
     .split("\n")
-    .filter((line) => /[A-Za-z]{4,}/.test(line) && !line.includes("-->") && !line.startsWith("WEBVTT")).length;
+    .filter((line) =>
+      /[A-Za-z]{4,}/.test(line) &&
+      !line.includes("-->") &&
+      !line.startsWith("WEBVTT") &&
+      !line.startsWith("Kind:") &&
+      !line.startsWith("Language:")
+    ).length;
   if (englishLineCount > Math.ceil(cueCount * maxEnglishLineRatio)) {
     problems.push(`Suspicious English-heavy output lines: ${englishLineCount}`);
   }
@@ -351,9 +369,10 @@ function validateOutput(sourceRaw: string, outputRaw: string, cueCount: number, 
 
 async function main(): Promise<void> {
   const opts = parseArgs(process.argv.slice(2));
+  const promptTemplatePath = resolvePromptTemplate(opts.promptTemplate);
   const [sourceRaw, template] = await Promise.all([
     readFile(opts.input, "utf8"),
-    readFile(opts.promptTemplate, "utf8"),
+    readFile(promptTemplatePath, "utf8"),
   ]);
   const parsed = parseVtt(sourceRaw);
   const batches = makeBatches(parsed.cues, opts.chunkSize, opts.overlap);
