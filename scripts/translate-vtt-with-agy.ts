@@ -32,6 +32,7 @@ type Options = {
   timeoutMs: number;
   resume: boolean;
   agyBin: string;
+  maxEnglishLineRatio: number;
 };
 
 const defaults: Options = {
@@ -45,6 +46,7 @@ const defaults: Options = {
   timeoutMs: 10 * 60 * 1000,
   resume: false,
   agyBin: "agy",
+  maxEnglishLineRatio: 0.25,
 };
 
 function parseArgs(argv: string[]): Options {
@@ -85,6 +87,9 @@ function parseArgs(argv: string[]): Options {
       case "--agy-bin":
         opts.agyBin = next();
         break;
+      case "--max-english-line-ratio":
+        opts.maxEnglishLineRatio = Number(next());
+        break;
       case "--resume":
         opts.resume = true;
         break;
@@ -106,6 +111,9 @@ function parseArgs(argv: string[]): Options {
   if (!Number.isFinite(opts.timeoutMs) || opts.timeoutMs <= 0) {
     throw new Error("--timeout-ms must be a positive number");
   }
+  if (!Number.isFinite(opts.maxEnglishLineRatio) || opts.maxEnglishLineRatio < 0) {
+    throw new Error("--max-english-line-ratio must be a non-negative number");
+  }
 
   return opts;
 }
@@ -124,6 +132,8 @@ Options:
   --model <name>             agy model. Default: ${defaults.model}
   --timeout-ms <n>           Timeout per agy call. Default: ${defaults.timeoutMs}
   --agy-bin <path>           agy executable. Default: ${defaults.agyBin}
+  --max-english-line-ratio <n>
+                              Fail when English-heavy text lines exceed this ratio. Default: ${defaults.maxEnglishLineRatio}
   --resume                   Reuse existing batch response files when present
 `);
 }
@@ -302,7 +312,7 @@ function buildVtt(headerBlock: string, cues: Cue[], translations: Map<number, st
   return blocks.join("\n\n") + "\n";
 }
 
-function validateOutput(sourceRaw: string, outputRaw: string, cueCount: number): string[] {
+function validateOutput(sourceRaw: string, outputRaw: string, cueCount: number, maxEnglishLineRatio: number): string[] {
   const problems: string[] = [];
   const sourceTimes = sourceRaw.match(/^.*-->.*$/gm) ?? [];
   const outputTimes = outputRaw.match(/^.*-->.*$/gm) ?? [];
@@ -332,7 +342,7 @@ function validateOutput(sourceRaw: string, outputRaw: string, cueCount: number):
   const englishLineCount = outputRaw
     .split("\n")
     .filter((line) => /[A-Za-z]{4,}/.test(line) && !line.includes("-->") && !line.startsWith("WEBVTT")).length;
-  if (englishLineCount > Math.ceil(cueCount * 0.25)) {
+  if (englishLineCount > Math.ceil(cueCount * maxEnglishLineRatio)) {
     problems.push(`Suspicious English-heavy output lines: ${englishLineCount}`);
   }
 
@@ -388,7 +398,7 @@ async function main(): Promise<void> {
   }
 
   const outputRaw = buildVtt(parsed.headerBlock, parsed.cues, translations);
-  const problems = validateOutput(sourceRaw, outputRaw, parsed.cues.length);
+  const problems = validateOutput(sourceRaw, outputRaw, parsed.cues.length, opts.maxEnglishLineRatio);
   if (problems.length > 0) {
     throw new Error(`Validation failed:\n${problems.join("\n")}`);
   }
