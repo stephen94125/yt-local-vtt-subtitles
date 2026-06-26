@@ -1,5 +1,5 @@
 ---
-name: youtube-vtt-zh-tw-subtitles
+name: translate-subtitles-to-zh-tw-by-llm
 description: YouTube VTT 字幕下載與繁體中文翻譯流程。當使用者提供 YouTube 網址或 videoId，要求下載官方或自動產生字幕、避開 YouTube 自動翻譯字幕，並產出 `{videoId}.zh-TW.vtt` 可供本機 YouTube 字幕 extension 使用時使用。此 skill 指導代理確認 videoId、選擇可用字幕、下載 VTT、用 bundled `scripts/translate-vtt-with-agy.ts` 翻譯、續跑與驗證。
 ---
 
