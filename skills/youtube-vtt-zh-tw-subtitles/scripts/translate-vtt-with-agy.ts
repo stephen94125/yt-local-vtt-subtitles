@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import { spawn } from "node:child_process";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { homedir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -38,11 +39,13 @@ type Options = {
 
 const scriptDir = path.dirname(fileURLToPath(import.meta.url));
 const defaultPromptTemplate = "../references/vtt-zh-tw-translation.md";
+const defaultVideoId = "dQw4w9WgXcQ";
+const defaultVttDir = "~/.vtt";
 
 const defaults: Options = {
-  input: "vtt/dQw4w9WgXcQ.en.vtt",
-  output: "vtt/dQw4w9WgXcQ.zh-TW.vtt",
-  workdir: ".tmp/vtt-translation-dQw4w9WgXcQ",
+  input: `${defaultVttDir}/${defaultVideoId}.en.vtt`,
+  output: `${defaultVttDir}/${defaultVideoId}.zh-TW.vtt`,
+  workdir: `${defaultVttDir}/tmp/vtt-translation-${defaultVideoId}`,
   promptTemplate: defaultPromptTemplate,
   chunkSize: 400,
   overlap: 120,
@@ -119,7 +122,17 @@ function parseArgs(argv: string[]): Options {
     throw new Error("--max-english-line-ratio must be a non-negative number");
   }
 
+  opts.input = expandHomePath(opts.input);
+  opts.output = expandHomePath(opts.output);
+  opts.workdir = expandHomePath(opts.workdir);
+
   return opts;
+}
+
+function expandHomePath(value: string): string {
+  if (value === "~") return homedir();
+  if (value.startsWith("~/")) return path.join(homedir(), value.slice(2));
+  return value;
 }
 
 function printHelp(): void {
@@ -378,6 +391,7 @@ async function main(): Promise<void> {
   const batches = makeBatches(parsed.cues, opts.chunkSize, opts.overlap);
   const promptDir = path.join(opts.workdir, "prompts");
   const responseDir = path.join(opts.workdir, "responses");
+  await mkdir(path.dirname(opts.output), { recursive: true });
   await mkdir(promptDir, { recursive: true });
   await mkdir(responseDir, { recursive: true });
 
