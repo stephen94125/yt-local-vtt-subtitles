@@ -320,36 +320,90 @@ Suspicious English-heavy output lines
 
 ## 驗證方式
 
-完成後，代理必須執行獨立驗證。
+完成後，代理必須執行本機驗證。此驗證不得再次下載字幕，也不得用大型 YouTube metadata 查詢；只檢查 `$HOME/.vtt/` 與 `$HOME/.vtt/tmp/` 內已產生的檔案。
 
-建議命令：
+驗證必須檢查：
+
+- 來源 VTT、目標 VTT、`validation.txt` 是否存在。
+- 來源與目標時間碼數量是否一致。
+- 來源與目標時間碼內容是否逐條一致。
+- 來源與目標 VTT block 數是否一致。
+- 目標 VTT 是否以 `WEBVTT` 開頭。
+- 目標 VTT 是否包含 `Language: zh-TW`。
+- `validation.txt` 是否包含 `ok`。
+- 目標字幕是否有明顯未翻譯的完整英文句。
+- 目標字幕是否有中文句子誤用半形句點。
+- 目標字幕最後一個 cue 是否存在，並且與來源最後一個 cue 意思對得上。
+- 頭尾數個 cue 是否看起來沒有錯位、空白、漏翻或把上下文翻到錯 cue。
+
+建議命令如下。若來源不是英文，代理必須把 `SOURCE_LANG` 改成實際下載的來源語言，例如 `ja`、`ko` 或 `zh-Hans`。
 
 ```bash
-node - <<'NODE'
+VIDEO_ID="{videoId}" SOURCE_LANG="en" node - <<'NODE'
 const fs = require('fs');
-const videoId = 'VIDEO_ID';
+const videoId = process.env.VIDEO_ID;
+const sourceLang = process.env.SOURCE_LANG || 'en';
 const base = `${process.env.HOME}/.vtt`;
-const src = fs.readFileSync(`${base}/${videoId}.en.vtt`, 'utf8');
-const out = fs.readFileSync(`${base}/${videoId}.zh-TW.vtt`, 'utf8');
+const workdir = `${base}/tmp/vtt-translation-${videoId}`;
+const srcPath = `${base}/${videoId}.${sourceLang}.vtt`;
+const outPath = `${base}/${videoId}.zh-TW.vtt`;
+const validationPath = `${workdir}/validation.txt`;
+
+for (const file of [srcPath, outPath, validationPath]) {
+  if (!fs.existsSync(file)) {
+    throw new Error(`missing file: ${file}`);
+  }
+}
+
+const src = fs.readFileSync(srcPath, 'utf8');
+const out = fs.readFileSync(outPath, 'utf8');
+const validation = fs.readFileSync(validationPath, 'utf8');
 const times = s => s.match(/^.*-->.*$/gm) || [];
-const a = times(src), b = times(out);
-console.log(`source timings=${a.length}`);
-console.log(`target timings=${b.length}`);
-console.log(`timings identical=${a.length === b.length && a.every((x, i) => x === b[i])}`);
-console.log(`target blocks=${out.trimEnd().split(/\n\s*\n/).length}`);
-console.log(`starts WEBVTT=${out.startsWith('WEBVTT')}`);
+const blocks = s => s.trimEnd().split(/\n\s*\n/);
+const sourceTimes = times(src);
+const targetTimes = times(out);
+const sourceBlocks = blocks(src);
+const targetBlocks = blocks(out);
+const standaloneEnglish = out
+  .split('\n')
+  .filter(line => /^[A-Za-z][A-Za-z ,.'?!-]+$/.test(line) && line !== 'WEBVTT');
+const cjkHalfPeriod = out
+  .split('\n')
+  .filter(line => /[\u3400-\u9fff][.]($|\s)/.test(line));
+
+console.log(JSON.stringify({
+  sourcePath: srcPath,
+  targetPath: outPath,
+  validationPath,
+  sourceTimings: sourceTimes.length,
+  targetTimings: targetTimes.length,
+  timingsIdentical: sourceTimes.length === targetTimes.length && sourceTimes.every((x, i) => x === targetTimes[i]),
+  sourceBlocks: sourceBlocks.length,
+  targetBlocks: targetBlocks.length,
+  startsWEBVTT: out.startsWith('WEBVTT'),
+  languageZhTW: /^Language: zh-TW$/m.test(out),
+  validationOk: /^ok$/m.test(validation),
+  standaloneEnglishLineCount: standaloneEnglish.length,
+  standaloneEnglishLineSamples: standaloneEnglish.slice(0, 10),
+  cjkHalfPeriodCount: cjkHalfPeriod.length,
+  cjkHalfPeriodSamples: cjkHalfPeriod.slice(0, 10),
+  sourceFirstCue: sourceBlocks[1],
+  targetFirstCue: targetBlocks[1],
+  sourceLastCue: sourceBlocks.at(-1),
+  targetLastCue: targetBlocks.at(-1),
+}, null, 2));
 NODE
 ```
 
-若來源不是 `en.vtt`，代理必須把驗證命令中的來源檔改成實際來源。
+判讀規則：
 
-驗證必須滿足：
-
-- `source timings` 等於 `target timings`。
-- `timings identical=true`。
-- `starts WEBVTT=true`。
-- `target blocks` 等於 cue 數加 1。
-- `$HOME/.vtt/tmp/vtt-translation-{videoId}/validation.txt` 包含 `ok`。
+- 如果時間碼不一致、block 數不一致、缺少 `WEBVTT`、缺少 `Language: zh-TW`，代理必須視為驗證失敗。
+- 如果 `validation.txt` 不存在或未包含 `ok`，代理必須視為驗證失敗。
+- 如果 `standaloneEnglishLineSamples` 包含完整英文句，代理必須對照來源 cue；不得直接放行。
+- 如果英文殘留是人名、團名、品牌、節目名、歌名、縮寫、菜名或現場發音梗，代理可以保留，但必須在回報中說明。
+- 如果 `cjkHalfPeriodSamples` 只有明確標點錯誤，代理可以直接修正目標 VTT。
+- 如果代理在驗證階段修正目標 VTT，則代理必須同步修正 `$HOME/.vtt/tmp/vtt-translation-{videoId}/translations.tsv` 中對應文字，並重新執行本節驗證。
+- 頭尾 cue 對照只用於抓明顯錯位與漏翻；代理不得只因文字風格不夠漂亮就重翻整份字幕。
 
 ## 輸出契約
 
